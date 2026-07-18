@@ -49,6 +49,14 @@ class MapsScraper:
                 viewport={"width": 1280, "height": 800}
             )
             
+            # Route requests to block heavy assets (images, media, fonts) to save CPU and network bandwidth
+            def block_heavy_assets(route):
+                if route.request.resource_type in ["image", "media", "font"]:
+                    route.abort()
+                else:
+                    route.continue_()
+            context.route("**/*", block_heavy_assets)
+            
             page = context.new_page()
             
             # Go to Google Maps
@@ -229,9 +237,10 @@ class MapsScraper:
                 time.sleep(delay)
                 
                 try:
-                    page.goto(link, timeout=30000)
+                    # Load using 'domcontentloaded' to return immediately after DOM is parsed, skipping heavy async assets
+                    page.goto(link, timeout=30000, wait_until="domcontentloaded")
                     # Wait for details panel header to load (usually an h1)
-                    page.wait_for_selector("h1", timeout=15000)
+                    page.wait_for_selector("h1", timeout=10000)
                     
                     # Extract Business Name
                     name = ""
