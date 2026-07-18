@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Lead Finder Agent Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.6.0/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --accent-primary: #3b82f6;
+            --accent-success: #10b981;
+            --accent-warning: #f59e0b;
+            --accent-danger: #ef4444;
+            --text-main: #f8fafc;
+            --text-secondary: #94a3b8;
+            --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            background-image:
+                radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.15) 0, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.1) 0, transparent 50%);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 2rem;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #60a5fa 0%, #34d399 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            margin-top: 0.2rem;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 2rem;
+        }
+
+        .glass-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-glass);
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .glass-card:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .control-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        label {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select {
+            width: 100%;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            color: var(--text-main);
+            font-family: inherit;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        input:focus,
+        select:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            cursor: pointer;
+            margin: 0.5rem 0;
+        }
+
+        .checkbox-group input {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--accent-primary);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.85rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            gap: 0.5rem;
+            width: 100%;
+        }
+
+        .btn-primary {
+            background-color: var(--accent-primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #2563eb;
+        }
+
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+
+        .btn-primary:disabled {
+            background-color: var(--text-secondary);
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .btn-success {
+            background-color: var(--accent-success);
+            color: white;
+            text-decoration: none;
+        }
+
+        .btn-success:hover {
+            background-color: #059669;
+        }
+
+        .btn-danger {
+            background-color: var(--accent-danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background-color: #dc2626;
+        }
+
+        .btn-danger:active {
+            transform: scale(0.98);
+        }
+
+        .btn-danger:disabled {
+            background-color: var(--text-secondary);
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        /* Logs console box */
+        .logs-section {
+            margin-top: 1.5rem;
+        }
+
+        .logs-console {
+            background: #020617;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            height: 250px;
+            overflow-y: auto;
+            padding: 1rem;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.8rem;
+            color: #38bdf8;
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .logs-console div {
+            white-space: pre-wrap;
+            line-height: 1.4;
+        }
+
+        /* Stats Cards */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .stat-val {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Table design */
+        .table-container {
+            overflow-x: auto;
+            margin-top: 1.5rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        th {
+            background: rgba(15, 23, 42, 0.8);
+            padding: 1rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            vertical-align: middle;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+
+        .badge-ok {
+            background-color: rgba(16, 185, 129, 0.15);
+            color: var(--accent-success);
+        }
+
+        .badge-none {
+            background-color: rgba(239, 68, 68, 0.15);
+            color: var(--accent-danger);
+        }
+
+        .badge-broken {
+            background-color: rgba(245, 158, 11, 0.15);
+            color: var(--accent-warning);
+        }
+
+        .badge-outdated {
+            background-color: rgba(59, 130, 246, 0.15);
+            color: var(--accent-primary);
+        }
+
+        .progress-bar-container {
+            width: 80px;
+            background: rgba(255, 255, 255, 0.1);
+            height: 6px;
+            border-radius: 3px;
+            overflow: hidden;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 0.5rem;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+        }
+
+        .copy-btn {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+            border-radius: 4px;
+            padding: 0.35rem 0.65rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .copy-btn:hover {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+            color: white;
+        }
+
+        .pitch-preview {
+            max-width: 250px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+
+        /* Status topbar */
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--text-secondary);
+        }
+
+        .status-dot.active {
+            background-color: var(--accent-success);
+            box-shadow: 0 0 8px var(--accent-success);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 0.4;
+            }
+
+            50% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0.4;
+            }
+        }
+
+        .table-section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .no-leads {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        /* Tooltip or Pitch Overlay Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.85);
+            z-index: 100;
+            backdrop-filter: blur(8px);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: #1e293b;
+            border: 1px solid var(--border-color);
+            width: 90%;
+            max-width: 600px;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: var(--shadow-glass);
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-close {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .modal-body {
+            font-size: 1rem;
+            line-height: 1.6;
+            color: #cbd5e1;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <h1>AI Lead Finder</h1>
+                <div class="subtitle">Autonomous Prospecting & Website Quality Audit Dashboard</div>
+            </div>
+            <div class="status-pill">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">System Idle</span>
+            </div>
+        </header>
+
+        <div class="dashboard-grid">
+            <!-- Sidebar panel -->
+            <div class="glass-card">
+                <form id="scrapeForm" class="control-panel">
+                    <div class="form-group">
+                        <label for="niche">Niche / Category (Optional)</label>
+                        <input type="text" id="niche" placeholder="e.g., Plumbers, Bakery (leave blank for all)">
+                    </div>
+                    <div class="form-group">
+                        <label for="location">Location / City</label>
+                        <input type="text" id="location" list="citiesList" placeholder="e.g., Pune, Mumbai, Delhi" required
+                            value="Pune">
+                        <datalist id="citiesList">
+                            <!-- Metros -->
+                            <option value="Mumbai"></option>
+                            <option value="Delhi"></option>
+                            <option value="Bengaluru"></option>
+                            <option value="Hyderabad"></option>
+                            <option value="Ahmedabad"></option>
+                            <option value="Chennai"></option>
+                            <option value="Kolkata"></option>
+                            <option value="Pune"></option>
+                            <!-- Maharashtra -->
+                            <option value="Thane"></option>
+                            <option value="Nagpur"></option>
+                            <option value="Nashik"></option>
+                            <option value="Pimpri-Chinchwad"></option>
+                            <option value="Kalyan-Dombivli"></option>
+                            <option value="Vasai-Virar"></option>
+                            <option value="Aurangabad"></option>
+                            <option value="Navi Mumbai"></option>
+                            <option value="Solapur"></option>
+                            <option value="Mira-Bhayandar"></option>
+                            <option value="Bhiwandi"></option>
+                            <option value="Amravati"></option>
+                            <option value="Nanded"></option>
+                            <option value="Kolhapur"></option>
+                            <option value="Akola"></option>
+                            <option value="Ulhasnagar"></option>
+                            <option value="Malegaon"></option>
+                            <option value="Dhule"></option>
+                            <option value="Jalgaon"></option>
+                            <option value="Latur"></option>
+                            <option value="Ahmednagar"></option>
+                            <option value="Chandrapur"></option>
+                            <option value="Parbhani"></option>
+                            <option value="Ichalkaranji"></option>
+                            <option value="Jalna"></option>
+                            <option value="Ambarnath"></option>
+                            <option value="Bhushawal"></option>
+                            <option value="Panvel"></option>
+                            <!-- Gujarat -->
+                            <option value="Surat"></option>
+                            <option value="Vadodara"></option>
+                            <option value="Rajkot"></option>
+                            <option value="Bhavnagar"></option>
+                            <option value="Jamnagar"></option>
+                            <option value="Junagadh"></option>
+                            <option value="Gandhinagar"></option>
+                            <option value="Nadiad"></option>
+                            <option value="Morbi"></option>
+                            <option value="Surendranagar"></option>
+                            <!-- Karnataka -->
+                            <option value="Mysore"></option>
+                            <option value="Hubli-Dharwad"></option>
+                            <option value="Belgaum"></option>
+                            <option value="Mangalore"></option>
+                            <option value="Davangere"></option>
+                            <option value="Bellary"></option>
+                            <option value="Shimoga"></option>
+                            <option value="Tumkur"></option>
+                            <option value="Gulbarga"></option>
+                            <!-- Tamil Nadu -->
+                            <option value="Coimbatore"></option>
+                            <option value="Madurai"></option>
+                            <option value="Tiruchirappalli"></option>
+                            <option value="Salem"></option>
+                            <option value="Tiruppur"></option>
+                            <option value="Erode"></option>
+                            <option value="Vellore"></option>
+                            <option value="Thoothukudi"></option>
+                            <option value="Tirunelveli"></option>
+                            <!-- Andhra Pradesh & Telangana -->
+                            <option value="Visakhapatnam"></option>
+                            <option value="Vijayawada"></option>
+                            <option value="Guntur"></option>
+                            <option value="Nellore"></option>
+                            <option value="Kurnool"></option>
+                            <option value="Rajamahendravaram"></option>
+                            <option value="Warangal"></option>
+                            <option value="Nizamabad"></option>
+                            <option value="Karimnagar"></option>
+                            <option value="Khammam"></option>
+                            <!-- Uttar Pradesh -->
+                            <option value="Lucknow"></option>
+                            <option value="Kanpur"></option>
+                            <option value="Ghaziabad"></option>
+                            <option value="Agra"></option>
+                            <option value="Meerut"></option>
+                            <option value="Varanasi"></option>
+                            <option value="Allahabad"></option>
+                            <option value="Bareilly"></option>
+                            <option value="Moradabad"></option>
+                            <option value="Aligarh"></option>
+                            <option value="Saharanpur"></option>
+                            <option value="Gorakhpur"></option>
+                            <option value="Noida"></option>
+                            <option value="Firozabad"></option>
+                            <option value="Jhansi"></option>
+                            <option value="Muzaffarnagar"></option>
+                            <option value="Mathura"></option>
+                            <option value="Rampur"></option>
+                            <option value="Shahjahanpur"></option>
+                            <option value="Farrukhabad"></option>
+                            <option value="Hapur"></option>
+                            <!-- West Bengal -->
+                            <option value="Howrah"></option>
+                            <option value="Durgapur"></option>
+                            <option value="Asansol"></option>
+                            <option value="Siliguri"></option>
+                            <option value="Maheshtala"></option>
+                            <option value="Rajpur Sonarpur"></option>
+                            <option value="Gopalpur"></option>
+                            <!-- Rajasthan -->
+                            <option value="Jaipur"></option>
+                            <option value="Jodhpur"></option>
+                            <option value="Kota"></option>
+                            <option value="Bikaner"></option>
+                            <option value="Ajmer"></option>
+                            <option value="Udaipur"></option>
+                            <option value="Bhilwara"></option>
+                            <option value="Alwar"></option>
+                            <option value="Sikar"></option>
+                            <!-- Madhya Pradesh -->
+                            <option value="Indore"></option>
+                            <option value="Bhopal"></option>
+                            <option value="Jabalpur"></option>
+                            <option value="Gwalior"></option>
+                            <option value="Ujjain"></option>
+                            <option value="Dewas"></option>
+                            <option value="Satna"></option>
+                            <option value="Sagar"></option>
+                            <option value="Ratlam"></option>
+                            <!-- Bihar & Jharkhand -->
+                            <option value="Patna"></option>
+                            <option value="Gaya"></option>
+                            <option value="Bhagalpur"></option>
+                            <option value="Muzaffarpur"></option>
+                            <option value="Dhanbad"></option>
+                            <option value="Ranchi"></option>
+                            <option value="Jamshedpur"></option>
+                            <option value="Bokaro"></option>
+                            <!-- Punjab & Haryana -->
+                            <option value="Ludhiana"></option>
+                            <option value="Amritsar"></option>
+                            <option value="Jalandhar"></option>
+                            <option value="Patiala"></option>
+                            <option value="Gurgaon"></option>
+                            <option value="Faridabad"></option>
+                            <option value="Panipat"></option>
+                            <option value="Yamunanagar"></option>
+                            <option value="Rohtak"></option>
+                            <option value="Hisar"></option>
+                            <!-- Others -->
+                            <option value="Kochi"></option>
+                            <option value="Thiruvananthapuram"></option>
+                            <option value="Kozhikode"></option>
+                            <option value="Raipur"></option>
+                            <option value="Bhilai"></option>
+                            <option value="Bilaspur"></option>
+                            <option value="Bhubaneswar"></option>
+                            <option value="Cuttack"></option>
+                            <option value="Rourkela"></option>
+                            <option value="Guwahati"></option>
+                            <option value="Dehradun"></option>
+                            <option value="Jammu"></option>
+                            <option value="Srinagar"></option>
+                            <option value="Chandigarh"></option>
+                            <option value="Agartala"></option>
+                            <option value="Pondicherry"></option>
+                        </datalist>
+                    </div>
+                    <input type="hidden" id="maxResults" value="0">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="useCache" checked>
+                        <label for="useCache">Use SQLite Cache</label>
+                    </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="headless" checked>
+                        <label for="headless">Run Browser Headless</label>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem; width: 100%;">
+                        <button type="submit" class="btn btn-primary" id="submitBtn">
+                            Start Exploration
+                        </button>
+                        <button type="button" class="btn btn-danger" id="stopBtn" style="display: none;">
+                            Stop Exploration
+                        </button>
+                    </div>
+                </form>
+
+                <div class="logs-section">
+                    <label>Agent Console Logs</label>
+                    <div class="logs-console" id="logsConsole">
+                        <div>System ready for commands.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Panel -->
+            <div class="main-content">
+                <div class="stats-row">
+                    <div class="glass-card stat-card">
+                        <div class="stat-val" id="statTotal">0</div>
+                        <div class="stat-label">Total Leads</div>
+                    </div>
+                    <div class="glass-card stat-card">
+                        <div class="stat-val" id="statNone">0</div>
+                        <div class="stat-label">No Website</div>
+                    </div>
+                    <div class="glass-card stat-card">
+                        <div class="stat-val" id="statBroken">0</div>
+                        <div class="stat-label">Broken/Outdated</div>
+                    </div>
+                    <div class="glass-card stat-card">
+                        <div class="stat-val" id="statQualified">0</div>
+                        <div class="stat-label">Highly Qualified</div>
+                    </div>
+                </div>
+
+                <div class="glass-card">
+                    <div class="table-section-header">
+                        <h2>Qualified Leads List</h2>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <a href="/api/download" class="btn btn-success" id="downloadBtn"
+                                style="display: none; width: auto; font-size: 0.85rem; padding: 0.5rem 1rem;">
+                                Export CSV
+                            </a>
+                            <button class="btn btn-primary" id="downloadPdfBtn"
+                                style="display: none; width: auto; font-size: 0.85rem; padding: 0.5rem 1rem;"
+                                onclick="exportToPDF()">
+                                Export PDF
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <table id="leadsTable">
+                            <thead>
+                                <tr>
+                                    <th>Business Name</th>
+                                    <th>Phone Number</th>
+                                    <th>Website Status</th>
+                                    <th>Activity Score</th>
+                                    <th>Pitch Preview</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leadsTableBody">
+                                <tr>
+                                    <td colspan="6" class="no-leads">No leads loaded. Run a search to populate.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pitch Modal -->
+    <div class="modal" id="pitchModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Outreach Email Pitch</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                Pich copy goes here.
+            </div>
+            <button class="btn btn-primary" id="modalCopyBtn" onclick="copyModalPitch()">
+                Copy to Clipboard
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let isPolling = false;
+        let logsInterval;
+        let statusInterval;
+
+        document.getElementById('scrapeForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const reqData = {
+                niche: document.getElementById('niche').value,
+                location: document.getElementById('location').value,
+                max_results: parseInt(document.getElementById('maxResults').value),
+                use_cache: document.getElementById('useCache').checked,
+                headless: document.getElementById('headless').checked
+            };
+
+            const submitBtn = document.getElementById('submitBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerText = "Running Exploration...";
+            stopBtn.style.display = "inline-flex";
+            stopBtn.disabled = false;
+            stopBtn.innerText = "Stop Exploration";
+
+            document.getElementById('statusDot').classList.add('active');
+            document.getElementById('statusText').innerText = "Agent Running";
+
+            try {
+                const response = await fetch('/api/run', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(reqData)
+                });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.detail || "Failed to start scraping.");
+                }
+
+                // Start polling logs and status
+                startPolling();
+
+            } catch (err) {
+                alert("Error: " + err.message);
+                submitBtn.disabled = false;
+                submitBtn.innerText = "Start Exploration";
+                stopBtn.style.display = "none";
+                document.getElementById('statusDot').classList.remove('active');
+                document.getElementById('statusText').innerText = "System Idle";
+            }
+        });
+
+        document.getElementById('stopBtn').addEventListener('click', async function () {
+            const stopBtn = document.getElementById('stopBtn');
+            stopBtn.disabled = true;
+            stopBtn.innerText = "Stopping...";
+            try {
+                const response = await fetch('/api/stop', {
+                    method: 'POST'
+                });
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.detail || "Failed to stop scraping.");
+                }
+            } catch (err) {
+                alert("Error stopping: " + err.message);
+                stopBtn.disabled = false;
+                stopBtn.innerText = "Stop Exploration";
+            }
+        });
+
+        function startPolling() {
+            if (isPolling) return;
+            isPolling = true;
+
+            // Immediately clear existing logs
+            document.getElementById('logsConsole').innerHTML = '<div>Launching agent...</div>';
+
+            // Poll immediately to populate UI without delay
+            pollLogs();
+            pollStatus();
+
+            logsInterval = setInterval(pollLogs, 1000);
+            statusInterval = setInterval(pollStatus, 1500);
+        }
+
+        async function pollLogs() {
+            try {
+                const response = await fetch('/api/logs');
+                const data = await response.json();
+                const consoleDiv = document.getElementById('logsConsole');
+
+                consoleDiv.innerHTML = '';
+                data.logs.forEach(log => {
+                    const row = document.createElement('div');
+                    row.innerText = log;
+                    consoleDiv.appendChild(row);
+                });
+                // Auto scroll to bottom
+                consoleDiv.scrollTop = consoleDiv.scrollHeight;
+            } catch (err) {
+                console.error("Log fetch error:", err);
+            }
+        }
+
+        async function pollStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+
+                if (!data.is_running) {
+                    // Pipeline finished
+                    clearInterval(logsInterval);
+                    clearInterval(statusInterval);
+                    isPolling = false;
+
+                    document.getElementById('submitBtn').disabled = false;
+                    document.getElementById('submitBtn').innerText = "Start Exploration";
+                    document.getElementById('stopBtn').style.display = "none";
+                    document.getElementById('statusDot').classList.remove('active');
+                    document.getElementById('statusText').innerText = "System Idle";
+
+                    if (data.error) {
+                        alert("Pipeline failed with error: " + data.error);
+                    } else {
+                        // Refresh display table
+                        updateUI(data.leads);
+                    }
+                } else {
+                    // If running, make sure button states are correct
+                    document.getElementById('submitBtn').disabled = true;
+                    document.getElementById('submitBtn').innerText = "Running Exploration...";
+                    document.getElementById('stopBtn').style.display = "inline-flex";
+                    // If running and has partial leads, display them
+                    updateUI(data.leads);
+                }
+            } catch (err) {
+                console.error("Status fetch error:", err);
+            }
+        }
+
+        function updateUI(leads) {
+            const tableBody = document.getElementById('leadsTableBody');
+            const totalSpan = document.getElementById('statTotal');
+            const noneSpan = document.getElementById('statNone');
+            const brokenSpan = document.getElementById('statBroken');
+            const qualSpan = document.getElementById('statQualified');
+
+            totalSpan.innerText = leads.length;
+
+            if (leads.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="6" class="no-leads">Scanning... No leads captured yet.</td></tr>';
+                noneSpan.innerText = 0;
+                brokenSpan.innerText = 0;
+                qualSpan.innerText = 0;
+                document.getElementById('downloadBtn').style.display = 'none';
+                document.getElementById('downloadPdfBtn').style.display = 'none';
+                return;
+            }
+
+            document.getElementById('downloadBtn').style.display = 'inline-flex';
+            document.getElementById('downloadPdfBtn').style.display = 'inline-flex';
+
+            let countNone = 0;
+            let countBrokenOutdated = 0;
+            let countQual = 0;
+
+            tableBody.innerHTML = '';
+            leads.forEach(lead => {
+                const status = lead.website_status;
+                if (status === 'NONE') countNone++;
+                if (status === 'BROKEN' || status === 'OUTDATED') countBrokenOutdated++;
+                if (lead.activity_score >= 0.8) countQual++;
+
+                const row = document.createElement('tr');
+
+                // Name Column
+                const nameTd = document.createElement('td');
+                const link = lead.location_link;
+                nameTd.innerHTML = `<strong>${lead.business_name}</strong><br><small style="color:var(--text-secondary);">${lead.address}</small>`;
+                row.appendChild(nameTd);
+
+                // Phone Column
+                const phoneTd = document.createElement('td');
+                phoneTd.innerText = lead.phone_number || 'N/A';
+                row.appendChild(phoneTd);
+
+                // Status Column
+                const statusTd = document.createElement('td');
+                let badgeClass = 'badge-ok';
+                if (status === 'NONE') badgeClass = 'badge-none';
+                if (status === 'BROKEN') badgeClass = 'badge-broken';
+                if (status === 'OUTDATED') badgeClass = 'badge-outdated';
+                statusTd.innerHTML = `<span class="badge ${badgeClass}">${status}</span>`;
+                row.appendChild(statusTd);
+
+                // Activity Score Column
+                const scoreTd = document.createElement('td');
+                const scorePct = lead.activity_score * 100;
+                let barColor = 'var(--accent-success)';
+                if (lead.activity_score < 0.5) barColor = 'var(--accent-danger)';
+                else if (lead.activity_score < 0.8) barColor = 'var(--accent-warning)';
+
+                scoreTd.innerHTML = `
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-fill" style="width:${scorePct}%; background:${barColor};"></div>
+                    </div>
+                    <span>${lead.activity_score}</span>
+                `;
+                row.appendChild(scoreTd);
+
+                // Pitch Preview Column
+                const pitchTd = document.createElement('td');
+                const isPitchable = lead.ai_pitch_draft && !lead.ai_pitch_draft.startsWith('N/A');
+                if (isPitchable) {
+                    pitchTd.innerHTML = `<div class="pitch-preview" style="color:var(--accent-primary);" onclick="viewPitch('${lead.business_name.replace(/'/g, "\\'")}', '${lead.ai_pitch_draft.replace(/'/g, "\\'")}')">${lead.ai_pitch_draft}</div>`;
+                } else {
+                    pitchTd.innerHTML = `<span style="color:var(--text-secondary); font-style:italic;">No pitch required</span>`;
+                }
+                row.appendChild(pitchTd);
+
+                // Actions Column
+                const actionsTd = document.createElement('td');
+                if (isPitchable) {
+                    actionsTd.innerHTML = `<button class="copy-btn" onclick="copyPitch('${lead.ai_pitch_draft.replace(/'/g, "\\'")}', this)">Copy Pitch</button>`;
+                } else {
+                    actionsTd.innerText = '-';
+                }
+                row.appendChild(actionsTd);
+
+                tableBody.appendChild(row);
+            });
+
+            noneSpan.innerText = countNone;
+            brokenSpan.innerText = countBrokenOutdated;
+            qualSpan.innerText = countQual;
+        }
+
+        // Modal triggers
+        function viewPitch(name, pitch) {
+            document.getElementById('modalTitle').innerText = `Outreach Pitch for ${name}`;
+            document.getElementById('modalBody').innerText = pitch;
+            document.getElementById('pitchModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('pitchModal').style.display = 'none';
+        }
+
+        function copyPitch(text, btn) {
+            navigator.clipboard.writeText(text);
+            const origText = btn.innerText;
+            btn.innerText = "Copied!";
+            btn.style.backgroundColor = "var(--accent-success)";
+            btn.style.borderColor = "var(--accent-success)";
+            setTimeout(() => {
+                btn.innerText = origText;
+                btn.style.backgroundColor = "";
+                btn.style.borderColor = "";
+            }, 1500);
+        }
+
+        function copyModalPitch() {
+            const pitch = document.getElementById('modalBody').innerText;
+            navigator.clipboard.writeText(pitch);
+            const btn = document.getElementById('modalCopyBtn');
+            btn.innerText = "Copied to Clipboard!";
+            btn.style.backgroundColor = "var(--accent-success)";
+            setTimeout(() => {
+                btn.innerText = "Copy to Clipboard";
+                btn.style.backgroundColor = "";
+            }, 1500);
+        }
+
+        // Close modal on click outside
+        window.onclick = function (e) {
+            const modal = document.getElementById('pitchModal');
+            if (e.target === modal) {
+                closeModal();
+            }
+        }
+
+        async function exportToPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('l', 'mm', 'a4');
+
+            // Get niche and location inputs for dynamic title and filename
+            const niche = document.getElementById('niche').value || 'Leads';
+            const location = document.getElementById('location').value || 'Location';
+
+            // Add header title dynamically matching inputs
+            doc.setFont("Helvetica", "bold");
+            doc.setFontSize(16);
+            doc.setTextColor(15, 23, 42); // slate-900
+            doc.text(`AI Lead Finder - Qualified Leads (${niche} in ${location})`, 14, 20);
+
+            // Add date metadata
+            doc.setFont("Helvetica", "normal");
+            doc.setFontSize(9);
+            doc.setTextColor(100, 116, 139); // slate-500
+            const dateStr = new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString();
+            doc.text(`Generated on: ${dateStr}`, 14, 25);
+
+            const response = await fetch('/api/status');
+            const data = await response.json();
+            const leads = data.leads || [];
+
+            if (leads.length === 0) {
+                alert("No leads available to export.");
+                return;
+            }
+
+            const tableRows = [];
+            const headers = ["Business Name", "Address", "Phone", "Status", "Activity Score", "AI Pitch Draft"];
+
+            leads.forEach(lead => {
+                tableRows.push([
+                    lead.business_name,
+                    lead.address,
+                    lead.phone_number || 'N/A',
+                    lead.website_status,
+                    lead.activity_score.toString(),
+                    lead.ai_pitch_draft && !lead.ai_pitch_draft.startsWith('N/A') ? lead.ai_pitch_draft : 'N/A'
+                ]);
+            });
+
+            doc.autoTable({
+                head: [headers],
+                body: tableRows,
+                startY: 30,
+                theme: 'striped',
+                headStyles: { fillColor: [59, 130, 246] }, // blue-500 accent
+                styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak' },
+                columnStyles: {
+                    0: { cellWidth: 35, fontStyle: 'bold' },
+                    1: { cellWidth: 45 },
+                    2: { cellWidth: 25 },
+                    3: { cellWidth: 15 },
+                    4: { cellWidth: 15 },
+                    5: { cellWidth: 'auto' }
+                }
+            });
+
+            // Generate clean URL safe filename matching input query
+            const safeNiche = niche.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            const safeLoc = location.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            doc.save(`leads_report_${safeNiche}_${safeLoc}_${new Date().toISOString().slice(0, 10)}.pdf`);
+        }
+
+        // Load initially if exists
+        async function checkInitial() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                if (data.leads && data.leads.length > 0) {
+                    updateUI(data.leads);
+                }
+                if (data.is_running) {
+                    const submitBtn = document.getElementById('submitBtn');
+                    submitBtn.disabled = true;
+                    submitBtn.innerText = "Running Exploration...";
+                    document.getElementById('stopBtn').style.display = "inline-flex";
+                    document.getElementById('statusDot').classList.add('active');
+                    document.getElementById('statusText').innerText = "Agent Running";
+                    startPolling();
+                }
+            } catch (e) { }
+        }
+        checkInitial();
+    </script>
+</body>
+
+</html>

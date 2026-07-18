@@ -1,0 +1,24 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# IDE / Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Local project files containing data or credentials
+.env
+leads_cache.db
+leads_cache.db-journal
+leads_output.csv
+search_error_screenshot.png
