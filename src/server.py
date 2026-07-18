@@ -78,15 +78,17 @@ class ScrapeRequest(BaseModel):
 
 async def audit_all_websites(raw_leads, check_stop_cb=None):
     auditor = WebsiteAuditor()
-    audited_results = []
-    for lead in raw_leads:
+    sem = asyncio.Semaphore(10)  # Limit concurrency to 10 audits at a time
+    
+    async def audit_with_sem(lead):
         if check_stop_cb and check_stop_cb():
-            logger.info("Website audit stopped by user request.")
-            break
+            return {"website_status": "NONE", "audit_notes": "Audit stopped."}
         url = lead.get("website")
-        audit_res = await auditor.check_website(url)
-        audited_results.append(audit_res)
-    return audited_results
+        async with sem:
+            return await auditor.check_website(url)
+            
+    tasks = [audit_with_sem(lead) for lead in raw_leads]
+    return await asyncio.gather(*tasks)
 
 def run_pipeline_task(niche: str, location: str, max_results: int, use_cache: bool, headless: bool):
     global state
@@ -186,12 +188,10 @@ def run_pipeline_task(niche: str, location: str, max_results: int, use_cache: bo
         logger.info("Qualifying leads and generating personalized AI outreach pitches...")
         pitch_generator = OutreachGenerator()
         
-        processed_leads = []
-        for lead, audit in zip(raw_leads, audit_results):
-            if state.stop_requested:
-                logger.info("Outreach generation stopped by user request.")
-                break
-                
+        from concurrent.futures import ThreadPoolExecutor
+        
+        def process_lead_item(item):
+            lead, audit = item
             activity_score = calculate_activity_score(lead["rating"], lead["review_count"])
             
             if audit["website_status"] in ["NONE", "BROKEN", "OUTDATED"]:
@@ -201,7 +201,7 @@ def run_pipeline_task(niche: str, location: str, max_results: int, use_cache: bo
             else:
                 pitch = "N/A (Business already has a functional, modern website)."
                 
-            processed_leads.append({
+            return {
                 "business_name": lead["business_name"],
                 "address": lead["address"],
                 "location_link": lead["location_link"],
@@ -211,7 +211,12 @@ def run_pipeline_task(niche: str, location: str, max_results: int, use_cache: bo
                 "activity_score": activity_score,
                 "ai_pitch_draft": pitch,
                 "audit_notes": audit["audit_notes"]
-            })
+            }
+            
+        processed_leads = []
+        if not state.stop_requested:
+            with ThreadPoolExecutor(max_workers=10) as executor:
+                processed_leads = list(executor.map(process_lead_item, zip(raw_leads, audit_results)))
 
         if processed_leads:
             logger.info("Saving final results to CSV...")
