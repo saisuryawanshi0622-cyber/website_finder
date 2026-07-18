@@ -88,13 +88,38 @@ class MapsScraper:
             # Search for the query
             logger.info(f"Searching for '{query}'...")
             try:
-                # Wait for search box to be visible (using both standard and alternative selectors)
                 search_selector = "input#searchboxinput, input[name='q']"
                 page.wait_for_selector(search_selector, timeout=20000)
-                page.fill(search_selector, query)
-                page.keyboard.press("Enter")
+                
+                # Click to focus the search box
+                page.locator(search_selector).click()
+                # Clear any existing value
+                page.locator(search_selector).fill("")
+                # Fill with query
+                page.locator(search_selector).fill(query)
+                page.wait_for_timeout(1000)
+                
+                # Try to click the search button
+                search_btn = page.locator("button#searchbox-searchbutton")
+                if search_btn.count() > 0:
+                    logger.info("Found search button, clicking it...")
+                    search_btn.click()
+                else:
+                    logger.info("Search button not found, pressing Enter...")
+                    page.keyboard.press("Enter")
+                
+                # Wait for results or navigation to begin
+                page.wait_for_timeout(3000)
+                
+                # Check if results started loading; if not, try pressing Enter as a fallback
+                feed_count = page.locator('div[role="feed"], a[href*="/maps/place/"]').count()
+                if feed_count == 0 and "/maps/place/" not in page.url:
+                    logger.info("Results not loaded yet, trying secondary Enter keypress...")
+                    page.locator(search_selector).focus()
+                    page.keyboard.press("Enter")
+                    page.wait_for_timeout(3000)
             except Exception as e:
-                logger.error(f"Search box input element not found: {e}")
+                logger.error(f"Search box input element not found or search failed: {e}")
                 screenshot_path = "src/static/debug_screenshot.png"
                 try:
                     page.screenshot(path=screenshot_path)
