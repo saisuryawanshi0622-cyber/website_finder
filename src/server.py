@@ -192,14 +192,14 @@ def run_pipeline_task(niche: str, location: str, max_results: int, use_cache: bo
         
         def process_lead_item(item):
             lead, audit = item
+            status = audit["website_status"]
+            if status not in ["NONE", "BROKEN", "OUTDATED"]:
+                return None
+                
             activity_score = calculate_activity_score(lead["rating"], lead["review_count"])
-            
-            if audit["website_status"] in ["NONE", "BROKEN", "OUTDATED"]:
-                lead_context = {**lead, "website_status": audit["website_status"], "audit_notes": audit["audit_notes"]}
-                current_niche = lead.get("niche_context", niche or "shops")
-                pitch = pitch_generator.generate_pitch(lead_context, current_niche)
-            else:
-                pitch = "N/A (Business already has a functional, modern website)."
+            lead_context = {**lead, "website_status": status, "audit_notes": audit["audit_notes"]}
+            current_niche = lead.get("niche_context", niche or "shops")
+            pitch = pitch_generator.generate_pitch(lead_context, current_niche)
                 
             return {
                 "business_name": lead["business_name"],
@@ -207,7 +207,7 @@ def run_pipeline_task(niche: str, location: str, max_results: int, use_cache: bo
                 "location_link": lead["location_link"],
                 "phone_number": lead["phone_number"],
                 "website": lead["website"] or "",
-                "website_status": audit["website_status"],
+                "website_status": status,
                 "activity_score": activity_score,
                 "ai_pitch_draft": pitch,
                 "audit_notes": audit["audit_notes"]
@@ -216,7 +216,8 @@ def run_pipeline_task(niche: str, location: str, max_results: int, use_cache: bo
         processed_leads = []
         if not state.stop_requested:
             with ThreadPoolExecutor(max_workers=10) as executor:
-                processed_leads = list(executor.map(process_lead_item, zip(raw_leads, audit_results)))
+                results = executor.map(process_lead_item, zip(raw_leads, audit_results))
+                processed_leads = [r for r in results if r is not None]
 
         if processed_leads:
             logger.info("Saving final results to CSV...")
