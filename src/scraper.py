@@ -59,7 +59,17 @@ class MapsScraper:
                 page.wait_for_timeout(2000) # Short pause to allow redirection if any
                 
                 # Check for Google Consent Form
-                consent_selector = 'form[action*="consent"] button, button[aria-label="Accept all"], button:has-text("Accept all"), button:has-text("I agree")'
+                consent_selector = (
+                    'form[action*="consent"] button, '
+                    'button[aria-label="Accept all"], '
+                    'button:has-text("Accept all"), '
+                    'button:has-text("I agree"), '
+                    'button:has-text("Alle akzeptieren"), '
+                    'button:has-text("Tout accepter"), '
+                    'button:has-text("Aceptar todo"), '
+                    'button:has-text("Accetta tutto"), '
+                    'button:has-text("Akkoord")'
+                )
                 consent_buttons = page.locator(consent_selector)
                 if consent_buttons.count() > 0:
                     logger.info("Google Consent/Cookie banner detected. Clicking accept...")
@@ -85,63 +95,98 @@ class MapsScraper:
                 page.keyboard.press("Enter")
             except Exception as e:
                 logger.error(f"Search box input element not found: {e}")
-                # Save screenshot for debugging
-                page.screenshot(path="search_error_screenshot.png")
-                logger.info("Saved search_error_screenshot.png for debug analysis.")
+                screenshot_path = "src/static/debug_screenshot.png"
+                try:
+                    page.screenshot(path=screenshot_path)
+                    logger.info(f"Saved debug screenshot to {screenshot_path} for analysis.")
+                except Exception as se:
+                    logger.error(f"Failed to save screenshot: {se}")
                 browser.close()
                 return leads
 
-            # Wait for the results pane/feed to load
+            # Wait for the results pane/feed to load or single result redirect
             logger.info("Waiting for search results...")
             feed_selector = 'div[role="feed"]'
-            try:
-                page.wait_for_selector(feed_selector, timeout=20000)
-            except Exception as e:
-                logger.error(f"Results feed not found: {e}. Check if location or niche exists.")
-                browser.close()
-                return leads
-
-            # Scroll down the results feed to load more listings
-            logger.info("Scrolling results pane to gather business links...")
-            last_height = page.evaluate(f"document.querySelector('{feed_selector}').scrollHeight")
-            no_change_count = 0
-            
-            # We scroll in a loop until we reach max_results links or hit the bottom
             place_links = []
-            while True:
-                if check_stop_cb and check_stop_cb():
-                    logger.info("Scraper scrolling stopped by user request.")
-                    break
-                # Scroll the feed element down
-                page.evaluate(f"document.querySelector('{feed_selector}').scrollBy(0, 3000)")
-                time.sleep(random.uniform(1.5, 2.5))
-                
-                # Extract currently loaded links that are place listings
-                current_links = page.evaluate(
-                    f"Array.from(document.querySelectorAll('{feed_selector} a[href*=\"/maps/place/\"]')).map(a => a.href)"
-                )
-                
-                # Filter duplicates while maintaining order
-                for link in current_links:
-                    if link not in place_links:
-                        place_links.append(link)
-                
-                logger.info(f"Found {len(place_links)} business links so far...")
-                if max_results > 0 and len(place_links) >= max_results:
-                    place_links = place_links[:max_results]
-                    break
-                
-                # Check scroll height to see if we reached the end
-                new_height = page.evaluate(f"document.querySelector('{feed_selector}').scrollHeight")
-                if new_height == last_height:
-                    no_change_count += 1
-                    if no_change_count >= 5:  # Retried 5 times and height didn't change
-                        logger.info("Reached the end of the Google Maps results list.")
-                        break
-                else:
-                    no_change_count = 0
-                    last_height = new_height
             
+            try:
+                # Wait for feed or place links to appear on the page
+                page.wait_for_selector('div[role="feed"], a[href*="/maps/place/"]', timeout=20000)
+            except Exception as e:
+                # If wait_for_selector timed out, it might be a single result redirect or CAPTCHA
+                if "/maps/place/" in page.url:
+                    logger.info("Single business listing detected via direct URL redirection.")
+                else:
+                    screenshot_path = "src/static/debug_screenshot.png"
+                    try:
+                        page.screenshot(path=screenshot_path)
+                        logger.error(f"Results feed not found. Saved debug screenshot to {screenshot_path}. Current URL: {page.url}, Title: {page.title()}")
+                    except Exception as se:
+                        logger.error(f"Failed to save screenshot: {se}")
+                    browser.close()
+                    return leads
+
+            # Determine if we are on a single listing detail page or a search results page
+            if "/maps/place/" in page.url:
+                logger.info(f"Direct listing redirect detected. Single target link: {page.url}")
+                place_links = [page.url]
+            else:
+                # Wait a bit for page stabilization
+                page.wait_for_timeout(2000)
+                
+                # Check if feed selector exists
+                feed_exists = page.locator(feed_selector).count() > 0
+                
+                if feed_exists:
+                    logger.info("Scrolling results pane to gather business links...")
+                    last_height = page.evaluate(f"document.querySelector('{feed_selector}').scrollHeight")
+                    no_change_count = 0
+                    
+                    while True:
+                        if check_stop_cb and check_stop_cb():
+                            logger.info("Scraper scrolling stopped by user request.")
+                            break
+                        
+                        # Scroll the feed element down
+                        page.evaluate(f"document.querySelector('{feed_selector}').scrollBy(0, 3000)")
+                        time.sleep(random.uniform(1.5, 2.5))
+                        
+                        # Extract currently loaded links that are place listings
+                        current_links = page.evaluate(
+                            f"Array.from(document.querySelectorAll('{feed_selector} a[href*=\"/maps/place/\"]')).map(a => a.href)"
+                        )
+                        
+                        # Filter duplicates while maintaining order
+                        for link in current_links:
+                            if link not in place_links:
+                                place_links.append(link)
+                        
+                        logger.info(f"Found {len(place_links)} business links so far...")
+                        if max_results > 0 and len(place_links) >= max_results:
+                            place_links = place_links[:max_results]
+                            break
+                        
+                        # Check scroll height to see if we reached the end
+                        new_height = page.evaluate(f"document.querySelector('{feed_selector}').scrollHeight")
+                        if new_height == last_height:
+                            no_change_count += 1
+                            if no_change_count >= 5:  # Retried 5 times and height didn't change
+                                logger.info("Reached the end of the Google Maps results list.")
+                                break
+                        else:
+                            no_change_count = 0
+                            last_height = new_height
+                else:
+                    # Feed selector does not exist but we might have place links on the page
+                    logger.info("Feed selector not found on page, gathering direct place links...")
+                    current_links = page.evaluate(
+                        "Array.from(document.querySelectorAll('a[href*=\"/maps/place/\"]')).map(a => a.href)"
+                    )
+                    for link in current_links:
+                        if link not in place_links:
+                            place_links.append(link)
+                    logger.info(f"Found {len(place_links)} business links without feed scroll.")
+
             # Restrict list to max_results requested
             if max_results > 0:
                 place_links = place_links[:max_results]
